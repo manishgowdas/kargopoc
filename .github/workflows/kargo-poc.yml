@@ -9,6 +9,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v4
       - name: Install kind
         run: |
           curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
@@ -19,13 +21,35 @@ jobs:
           kind create cluster --name kargo-demo
       - name: Verify cluster
         run: kubectl get nodes
-      - name: Install Argo CD
+      # -----------------------------
+      # Install Argo CD (fixed)
+      # -----------------------------
+      - name: Install Argo CD (core)
         run: |
           kubectl create namespace argocd
           kubectl apply -n argocd \
-            -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-      - name: Wait for Argo CD pods
+            -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/core-install.yaml
+      - name: Wait for Argo CD
         run: |
           kubectl wait --for=condition=Ready pods --all -n argocd --timeout=300s
       - name: Verify Argo CD
         run: kubectl get pods -n argocd
+      # -----------------------------
+      # Install Kargo
+      # -----------------------------
+      - name: Install Kargo
+        run: |
+          kubectl create namespace kargo
+          helm repo add kargo https://akuity.github.io/kargo/
+          helm repo update
+          helm install kargo kargo/kargo -n kargo
+      - name: Wait for Kargo
+        run: |
+          kubectl wait --for=condition=Ready pods --all -n kargo --timeout=300s
+      - name: Verify Kargo
+        run: kubectl get pods -n kargo
+      # -----------------------------
+      # Final check
+      # -----------------------------
+      - name: Show all resources
+        run: kubectl get all -A
