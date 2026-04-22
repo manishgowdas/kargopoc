@@ -31,7 +31,11 @@ jobs:
             -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/core-install.yaml
       - name: Wait for Argo CD
         run: |
-          kubectl wait --for=condition=Ready pods --all -n argocd --timeout=300s
+          sleep 30
+          kubectl rollout status deployment/argocd-redis -n argocd --timeout=300s
+          kubectl rollout status deployment/argocd-repo-server -n argocd --timeout=300s
+          kubectl rollout status deployment/argocd-applicationset-controller -n argocd --timeout=300s
+          kubectl rollout status statefulset/argocd-application-controller -n argocd --timeout=300s
       - name: Verify Argo CD
         run: kubectl get pods -n argocd
       # -----------------------------
