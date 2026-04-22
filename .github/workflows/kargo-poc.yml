@@ -22,7 +22,7 @@ jobs:
       - name: Verify cluster
         run: kubectl get nodes
       # -----------------------------
-      # Install Argo CD (fixed)
+      # Install Argo CD
       # -----------------------------
       - name: Install Argo CD (core only - FIXED)
         run: |
@@ -68,6 +68,146 @@ jobs:
             --wait
       - name: Verify Kargo
         run: kubectl get pods -n kargo
+      # -----------------------------
+      # Install Kargo CLI
+      # -----------------------------
+      - name: Install Kargo CLI
+        run: |
+          curl -Lo /usr/local/bin/kargo https://github.com/akuity/kargo/releases/latest/download/kargo-linux-amd64
+          chmod +x /usr/local/bin/kargo
+          kargo version
+      # -----------------------------
+      # Setup Kargo Project & Stages
+      # -----------------------------
+      - name: Create Kargo Project
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: kargo.akuity.io/v1alpha1
+          kind: Project
+          metadata:
+            name: kargo-demo
+          EOF
+      - name: Create stage namespaces
+        run: |
+          kubectl create namespace dev || true
+          kubectl create namespace staging || true
+          kubectl create namespace prod || true
+      - name: Deploy sample app to all stages
+        run: |
+          for NS in dev staging prod; do
+            kubectl create deployment guestbook \
+              --image=ghcr.io/akuity/guestbook:latest \
+              --namespace=$NS || true
+            kubectl expose deployment guestbook \
+              --port=80 --target-port=8080 \
+              --namespace=$NS || true
+          done
+      - name: Create Kargo Warehouse
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: kargo.akuity.io/v1alpha1
+          kind: Warehouse
+          metadata:
+            name: kargo-demo
+            namespace: kargo-demo
+          spec:
+            subscriptions:
+            - image:
+                repoURL: ghcr.io/akuity/guestbook
+                semverConstraint: ^0.1.0
+          EOF
+      - name: Create Kargo Stages
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: kargo.akuity.io/v1alpha1
+          kind: Stage
+          metadata:
+            name: dev
+            namespace: kargo-demo
+          spec:
+            requestedFreight:
+            - origin:
+                kind: Warehouse
+                name: kargo-demo
+              sources:
+                direct: true
+            promotionTemplate:
+              spec:
+                steps:
+                - uses: kustomize-set-image
+                  config:
+                    images:
+                    - image: ghcr.io/akuity/guestbook
+                - uses: kustomize-build
+                  config:
+                    path: ./
+                - uses: kubectl-apply
+                  config:
+                    namespace: dev
+          ---
+          apiVersion: kargo.akuity.io/v1alpha1
+          kind: Stage
+          metadata:
+            name: staging
+            namespace: kargo-demo
+          spec:
+            requestedFreight:
+            - origin:
+                kind: Warehouse
+                name: kargo-demo
+              sources:
+                stages:
+                - dev
+            promotionTemplate:
+              spec:
+                steps:
+                - uses: kustomize-set-image
+                  config:
+                    images:
+                    - image: ghcr.io/akuity/guestbook
+                - uses: kustomize-build
+                  config:
+                    path: ./
+                - uses: kubectl-apply
+                  config:
+                    namespace: staging
+          ---
+          apiVersion: kargo.akuity.io/v1alpha1
+          kind: Stage
+          metadata:
+            name: prod
+            namespace: kargo-demo
+          spec:
+            requestedFreight:
+            - origin:
+                kind: Warehouse
+                name: kargo-demo
+              sources:
+                stages:
+                - staging
+            promotionTemplate:
+              spec:
+                steps:
+                - uses: kustomize-set-image
+                  config:
+                    images:
+                    - image: ghcr.io/akuity/guestbook
+                - uses: kustomize-build
+                  config:
+                    path: ./
+                - uses: kubectl-apply
+                  config:
+                    namespace: prod
+          EOF
+      # -----------------------------
+      # Verify everything
+      # -----------------------------
+      - name: Verify Kargo resources
+        run: |
+          kubectl get projects -A
+          kubectl get warehouses -n kargo-demo
+          kubectl get stages -n kargo-demo
+          kubectl get freight -n kargo-demo
       # -----------------------------
       # Final check
       # -----------------------------
