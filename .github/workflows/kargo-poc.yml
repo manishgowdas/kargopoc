@@ -43,8 +43,8 @@ jobs:
       # -----------------------------
       - name: Install Kargo
         run: |
-          kubectl create namespace kargo
-          helm repo add kargo https://akuity.github.io/kargo/
+          kubectl create namespace kargo || true
+          helm repo add kargo https://charts.kargo.akuity.io
           helm repo update
           helm install kargo kargo/kargo -n kargo
       - name: Wait for Kargo
