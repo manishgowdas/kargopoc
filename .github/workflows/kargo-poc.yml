@@ -66,4 +66,10 @@ jobs:
             --set api.adminAccount.passwordHash="$ADMIN_PASSWORD_HASH" \
             --set api.adminAccount.tokenSigningKey="$SIGNING_KEY" \
             --wait
-      - n
+      - name: Verify Kargo
+        run: kubectl get pods -n kargo
+      # -----------------------------
+      # Final check
+      # -----------------------------
+      - name: Show all resources
+        run: kubectl get all -A
