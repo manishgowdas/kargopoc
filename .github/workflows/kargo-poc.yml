@@ -43,13 +43,11 @@ jobs:
       # -----------------------------
       - name: Install Kargo
         run: |
-          kubectl create namespace kargo || true
-          helm repo add kargo https://charts.kargo.akuity.io
-          helm repo update
-          helm install kargo kargo/kargo -n kargo
-      - name: Wait for Kargo
-        run: |
-          kubectl wait --for=condition=Ready pods --all -n kargo --timeout=300s
+          helm install kargo \
+            oci://ghcr.io/akuity/kargo-charts/kargo \
+            --namespace kargo \
+            --create-namespace \
+            --wait
       - name: Verify Kargo
         run: kubectl get pods -n kargo
       # -----------------------------
