@@ -27,7 +27,7 @@ jobs:
       - name: Install Argo CD (core only - FIXED)
         run: |
           kubectl create namespace argocd || true
-          kubectl apply -n argocd \
+          kubectl apply -n argocd --server-side \
             -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/core-install.yaml
       - name: Wait for Argo CD
         run: |
