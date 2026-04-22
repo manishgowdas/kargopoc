@@ -39,6 +39,19 @@ jobs:
       - name: Verify Argo CD
         run: kubectl get pods -n argocd
       # -----------------------------
+      # Install cert-manager
+      # -----------------------------
+      - name: Install cert-manager
+        run: |
+          kubectl apply --server-side \
+            -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+      - name: Wait for cert-manager
+        run: |
+          sleep 30
+          kubectl rollout status deployment/cert-manager -n cert-manager --timeout=300s
+          kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=300s
+          kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=300s
+      # -----------------------------
       # Install Kargo
       # -----------------------------
       - name: Install Kargo
@@ -53,10 +66,4 @@ jobs:
             --set api.adminAccount.passwordHash="$ADMIN_PASSWORD_HASH" \
             --set api.adminAccount.tokenSigningKey="$SIGNING_KEY" \
             --wait
-      - name: Verify Kargo
-        run: kubectl get pods -n kargo
-      # -----------------------------
-      # Final check
-      # -----------------------------
-      - name: Show all resources
-        run: kubectl get all -A
+      - n
