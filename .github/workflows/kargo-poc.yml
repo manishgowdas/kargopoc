@@ -7,8 +7,7 @@ jobs:
 test:
 runs-on: ubuntu-latest
 
-```
+
 steps:
   - name: Print message
     run: echo "GitHub Actions is working!"
-```
