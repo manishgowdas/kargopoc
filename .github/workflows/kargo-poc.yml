@@ -19,3 +19,13 @@ jobs:
           kind create cluster --name kargo-demo
       - name: Verify cluster
         run: kubectl get nodes
+      - name: Install Argo CD
+        run: |
+          kubectl create namespace argocd
+          kubectl apply -n argocd \
+            -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      - name: Wait for Argo CD pods
+        run: |
+          kubectl wait --for=condition=Ready pods --all -n argocd --timeout=300s
+      - name: Verify Argo CD
+        run: kubectl get pods -n argocd
